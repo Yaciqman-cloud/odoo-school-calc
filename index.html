@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur de Moyennes Scolaires & Convertisseur - Odoo Ready</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        odoo: {
+                            50: '#f0fdf4',
+                            500: '#714B67',
+                            600: '#5c3c53',
+                            700: '#482e40',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+    <header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-purple-700 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">OdooSchool Calc & Convert</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Calculateur & Convertisseur de notes académiques</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition text-slate-600 dark:text-slate-300" title="Changer le thème">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+                <button onclick="openModal('odoo-guide-modal')" class="hidden sm:flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition font-medium text-sm">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Intégration Odoo</span>
+                </button>
+                <button onclick="exportData()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition text-slate-600 dark:text-slate-300" title="Exporter les données">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+                <label class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition text-slate-600 dark:text-slate-300 cursor-pointer" title="Importer des données">
+                    <i class="fa-solid fa-upload"></i>
+                    <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-24 opacity-0 transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm font-medium">
+            <i id="toast-icon" class="fa-solid fa-check-circle text-emerald-400"></i>
+            <span id="toast-msg">Action effectuée avec succès</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                <div class="absolute -right-4 -bottom-4 text-purple-100 dark:text-purple-900/20 text-8xl font-black pointer-events-none">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Moyenne Générale</p>
+                    <h2 id="global-average" class="text-4xl font-extrabold text-purple-700 dark:text-purple-400 mt-2">0.00 <span class="text-xl font-normal text-slate-400">/ 20</span></h2>
+                </div>
+                <div class="mt-4 flex items-center text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    <i id="mention-icon" class="fa-solid fa-award mr-1.5"></i>
+                    <span id="mention-text">En attente de notes</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Coefficients</p>
+                    <h2 id="total-coefs" class="text-4xl font-extrabold text-slate-700 dark:text-slate-200 mt-2">0</h2>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-scale-balanced mr-1.5"></i> Pondération active
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Matières Enregistrées</p>
+                    <h2 id="total-subjects" class="text-4xl font-extrabold text-slate-700 dark:text-slate-200 mt-2">0</h2>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-book mr-1.5"></i> Domaines étudiés
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Notes Saisies</p>
+                    <h2 id="total-grades-count" class="text-4xl font-extrabold text-slate-700 dark:text-slate-200 mt-2">0</h2>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-pen-to-square mr-1.5"></i> Évaluations incluses
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+            <div class="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+                <button onclick="switchTab('subjects')" id="tab-subjects-btn" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-purple-700 text-white shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-book-open mr-2"></i> Matières & Notes
+                </button>
+                <button onclick="switchTab('converter')" id="tab-converter-btn" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                    <i class="fa-solid fa-arrow-right-arrow-left mr-2"></i> Convertisseur de Notes
+                </button>
+                <button onclick="switchTab('simulator')" id="tab-simulator-btn" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Simulateur
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-end">
+                <button onclick="openModal('add-subject-modal')" class="px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-medium rounded-xl text-sm transition shadow-sm flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Ajouter une matière</span>
+                </button>
+                <button onclick="resetData()" class="px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 font-medium rounded-xl text-sm transition flex items-center justify-center" title="Réinitialiser">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Onglet 1: Matières & Notes -->
+        <div id="tab-subjects" class="space-y-6">
+            <div id="subjects-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Rempli dynamiquement -->
+            </div>
+            
+            <div id="empty-state" class="hidden bg-white dark:bg-slate-800 rounded-2xl p-12 text-center border border-dashed border-slate-300 dark:border-slate-700">
+                <div class="w-16 h-16 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-700 dark:text-slate-200">Aucune matière enregistrée</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 mb-6">Commencez par ajouter votre première matière pour calculer vos moyennes.</p>
+                <button onclick="openModal('add-subject-modal')" class="px-5 py-2.5 bg-purple-700 text-white font-medium rounded-xl text-sm shadow-sm hover:bg-purple-800 transition">
+                    Créer une matière
+                </button>
+            </div>
+        </div>
+
+        <div id="tab-converter" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold">Convertisseur de Barèmes & Équivalences</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Convertissez instantanément une note sur 20 vers n'importe quel barème ou système international.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Panneau de Saisie/Conversion -->
+                    <div class="space-y-5 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-bold text-purple-700 dark:text-purple-400">Mode de conversion</span>
+                            <button onclick="toggleConverterDirection()" id="toggle-dir-btn" class="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-lg hover:bg-purple-200 transition flex items-center space-x-1.5">
+                                <i class="fa-solid fa-repeat"></i>
+                                <span id="dir-text">Depuis Note / 20</span>
+                            </button>
+                        </div>
+
+                        <div id="input-mode-20" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Note sur 20 à convertir</label>
+                                <div class="relative">
+                                    <input type="number" id="conv-input-20" min="0" max="20" step="0.1" value="14" oninput="calculateConversion()" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-purple-600">
+                                    <span class="absolute right-4 top-3 text-slate-400 font-bold">/ 20</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="input-mode-custom" class="hidden space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Note obtenue</label>
+                                    <input type="number" id="conv-input-custom-val" min="0" step="0.1" value="35" oninput="calculateConversion()" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-purple-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sur barème de</label>
+                                    <input type="number" id="conv-input-custom-max" min="1" step="1" value="50" oninput="calculateConversion()" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-purple-600">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sélection du Barème Cible -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Barème personnalisé rapide</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <button onclick="setQuickScale(10)" class="py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold hover:border-purple-500 transition">Sur 10</button>
+                                <button onclick="setQuickScale(30)" class="py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold hover:border-purple-500 transition">Sur 30</button>
+                                <button onclick="setQuickScale(40)" class="py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold hover:border-purple-500 transition">Sur 40</button>
+                                <button onclick="setQuickScale(100)" class="py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold hover:border-purple-500 transition">Sur 100 (%)</button>
+                            </div>
+                        </div>
+
+                        <!-- Jauge visuelle de pourcentage -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
+                                <span>Rendement / Pourcentage</span>
+                                <span id="conv-percent-text">70%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+                                <div id="conv-percent-bar" class="bg-purple-600 h-full transition-all duration-300" style="width: 70%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Affichage des résultats équivalents -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 rounded-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-purple-600 dark:text-purple-300">Note Équivalente / 20</span>
+                            <div id="res-note-20" class="text-3xl font-black text-purple-900 dark:text-purple-100 my-2">14.00</div>
+                            <span class="text-[10px] text-slate-400">Standard Français</span>
+                        </div>
+
+                        <div class="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-300">Sur Barème Personnalisé</span>
+                            <div id="res-note-custom" class="text-3xl font-black text-indigo-900 dark:text-indigo-100 my-2">35 / 50</div>
+                            <span class="text-[10px] text-slate-400">Ajustable</span>
+                        </div>
+
+                        <div class="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-300">Système US (Lettre)</span>
+                            <div id="res-grade-us" class="text-3xl font-black text-emerald-900 dark:text-emerald-100 my-2">B</div>
+                            <span class="text-[10px] text-slate-400">A+, A, B, C, D, F</span>
+                        </div>
+
+                        <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-amber-600 dark:text-amber-300">GPA Américain</span>
+                            <div id="res-gpa" class="text-3xl font-black text-amber-900 dark:text-amber-100 my-2">3.00</div>
+                            <span class="text-[10px] text-slate-400">Échelle de 0.0 à 4.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-simulator" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold">Simulateur d'Objectifs & Projections</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Testez l'impact d'une future note sur votre moyenne globale.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Matière concernée</label>
+                        <select id="sim-subject" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                            <!-- Rempli dynamiquement -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Note hypothétique (/20)</label>
+                        <input type="number" id="sim-grade" min="0" max="20" step="0.25" placeholder="ex: 15" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Coefficient de l'évaluation</label>
+                        <input type="number" id="sim-coef" min="0.5" max="10" step="0.5" value="1" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end">
+                    <button onclick="runSimulation()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl text-sm transition shadow-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>Calculer la projection</span>
+                    </button>
+                </div>
+
+                <div id="sim-result-box" class="hidden mt-6 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-purple-600 dark:text-purple-300 font-semibold uppercase tracking-wider">Résultat simulé</p>
+                        <h4 id="sim-new-average" class="text-2xl font-black text-purple-800 dark:text-purple-200 mt-1">0.00 / 20</h4>
+                    </div>
+                    <div id="sim-diff" class="text-sm font-bold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        +0.00 pt
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Ajout Matière -->
+    <div id="add-subject-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Ajouter une nouvelle matière</h3>
+                <button onclick="closeModal('add-subject-modal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddSubject(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Nom de la matière</label>
+                    <input type="text" id="new-subject-name" required placeholder="ex: Mathématiques, Histoire..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Coefficient de la matière</label>
+                    <input type="number" id="new-subject-coef" min="1" max="20" step="0.5" value="2" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Couleur d'identification</label>
+                    <select id="new-subject-color" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                        <option value="purple">Violet Odoo</option>
+                        <option value="indigo">Indigo Profond</option>
+                        <option value="blue">Bleu Académique</option>
+                        <option value="emerald">Vert Émeraude</option>
+                        <option value="amber">Ambre / Orange</option>
+                        <option value="rose">Rose Corail</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeModal('add-subject-modal')" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-sm hover:bg-slate-200 transition">Annuler</button>
+                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-purple-700 text-white font-medium text-sm hover:bg-purple-800 transition">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Note avec Barème Personnalisable -->
+    <div id="add-grade-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Ajouter une évaluation</h3>
+                <button onclick="closeModal('add-grade-modal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddGrade(event)" class="space-y-4">
+                <input type="hidden" id="grade-subject-id">
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Intitulé de l'évaluation</label>
+                    <input type="text" id="grade-title" required placeholder="ex: Contrôle n°1, TP, Examen..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1.5">Note obtenue</label>
+                        <input type="number" id="grade-value" min="0" step="0.25" required placeholder="14" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1.5">Sur le barème de</label>
+                        <input type="number" id="grade-max" min="1" max="100" step="1" value="20" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Coefficient de l'évaluation</label>
+                    <input type="number" id="grade-coef" min="0.25" max="10" step="0.25" value="1" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600">
+                </div>
+                <div class="flex justify-end space-x-3 pt-3">
+                    <button type="button" onclick="closeModal('add-grade-modal')" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium text-sm hover:bg-slate-200 transition">Annuler</button>
+                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-purple-700 text-white font-medium text-sm hover:bg-purple-800 transition">Ajouter la note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Guide Odoo -->
+    <div id="odoo-guide-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold flex items-center space-x-2">
+                    <i class="fa-solid fa-code text-purple-600"></i>
+                    <span>Comment intégrer ce calculateur dans Odoo</span>
+                </h3>
+                <button onclick="closeModal('odoo-guide-modal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-4 text-sm text-slate-600 dark:text-slate-300">
+                <div class="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/40">
+                    <h4 class="font-bold text-purple-800 dark:text-purple-200 mb-1">Méthode 1 : Intégration via le Module Website d'Odoo</h4>
+                    <p>Vous pouvez intégrer ce fichier dans n'importe quel élément Web d'Odoo.</p>
+                </div>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>Allez dans le module <strong>Site Web (Website)</strong> d'Odoo.</li>
+                    <li>Créez ou éditez une page (ex: <code class="bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">/calculateur-notes</code>).</li>
+                    <li>Faites glisser un bloc de construction personnalisé ou un composant <strong>Structure &gt; Snippet HTML / Code Embed</strong>.</li>
+                    <li>Copiez l'intégralité du code source de cette page HTML et collez-le directement.</li>
+                </ol>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal('odoo-guide-modal')" class="px-5 py-2.5 rounded-xl bg-purple-700 text-white font-medium text-sm hover:bg-purple-800 transition">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Global
+        let appData = {
+            subjects: [
+                {
+                    id: 'sub_1',
+                    name: 'Mathématiques',
+                    coef: 4,
+                    color: 'purple',
+                    grades: [
+                        { id: 'g_1', title: 'Devoir surveillé 1', value: 14.5, maxBar: 20, coef: 2 },
+                        { id: 'g_2', title: 'Interrogation rapide', value: 8, maxBar: 10, coef: 1 }
+                    ]
+                },
+                {
+                    id: 'sub_2',
+                    name: 'Histoire - Géographie',
+                    coef: 2,
+                    color: 'indigo',
+                    grades: [
+                        { id: 'g_3', title: 'Dissertation', value: 28, maxBar: 40, coef: 2 }
+                    ]
+                }
+            ]
+        };
+
+        let converterFrom20 = true;
+        let currentCustomScale = 50;
+
+        function initApp() {
+            const saved = localStorage.getItem('odoo_school_calc_data');
+            if (saved) {
+                try { appData = JSON.parse(saved); } catch (e) { console.error(e); }
+            }
+            render();
+            calculateConversion();
+        }
+
+        function persist() {
+            localStorage.setItem('odoo_school_calc_data', JSON.stringify(appData));
+            render();
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toast-msg');
+            const icon = document.getElementById('toast-icon');
+            
+            msg.textContent = message;
+            icon.className = type === 'success' ? 'fa-solid fa-check-circle text-emerald-400' : 'fa-solid fa-triangle-exclamation text-amber-400';
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 3000);
+        }
+
+        // Gestion des Onglets
+        function switchTab(tabName) {
+            ['subjects', 'converter', 'simulator'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}-btn`).className = "px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 whitespace-nowrap";
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}-btn`).className = "px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-purple-700 text-white shadow-sm whitespace-nowrap";
+
+            if (tabName === 'simulator') updateSimulatorSelect();
+        }
+
+        function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+        function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+        function openAddGradeModal(subjectId) {
+            document.getElementById('grade-subject-id').value = subjectId;
+            document.getElementById('grade-title').value = '';
+            document.getElementById('grade-value').value = '';
+            document.getElementById('grade-max').value = '20';
+            document.getElementById('grade-coef').value = '1';
+            openModal('add-grade-modal');
+        }
+
+        function handleAddSubject(event) {
+            event.preventDefault();
+            const name = document.getElementById('new-subject-name').value;
+            const coef = parseFloat(document.getElementById('new-subject-coef').value);
+            const color = document.getElementById('new-subject-color').value;
+
+            appData.subjects.push({ id: 'sub_' + Date.now(), name, coef, color, grades: [] });
+            persist();
+            closeModal('add-subject-modal');
+            showToast("Matière ajoutée avec succès");
+        }
+
+        function deleteSubject(subjectId) {
+            if (confirm("Voulez-vous vraiment supprimer cette matière ?")) {
+                appData.subjects = appData.subjects.filter(s => s.id !== subjectId);
+                persist();
+                showToast("Matière supprimée");
+            }
+        }
+
+        function handleAddGrade(event) {
+            event.preventDefault();
+            const subjectId = document.getElementById('grade-subject-id').value;
+            const title = document.getElementById('grade-title').value;
+            const value = parseFloat(document.getElementById('grade-value').value);
+            const maxBar = parseFloat(document.getElementById('grade-max').value) || 20;
+            const coef = parseFloat(document.getElementById('grade-coef').value);
+
+            const subject = appData.subjects.find(s => s.id === subjectId);
+            if (subject) {
+                subject.grades.push({ id: 'g_' + Date.now(), title, value, maxBar, coef });
+                persist();
+                closeModal('add-grade-modal');
+                showToast("Évaluation enregistrée");
+            }
+        }
+
+        function deleteGrade(subjectId, gradeId) {
+            const subject = appData.subjects.find(s => s.id === subjectId);
+            if (subject) {
+                subject.grades = subject.grades.filter(g => g.id !== gradeId);
+                persist();
+                showToast("Évaluation supprimée");
+            }
+        }
+
+        function toggleConverterDirection() {
+            converterFrom20 = !converterFrom20;
+            const dirBtnText = document.getElementById('dir-text');
+            const mode20 = document.getElementById('input-mode-20');
+            const modeCustom = document.getElementById('input-mode-custom');
+
+            if (converterFrom20) {
+                dirBtnText.textContent = "Depuis Note / 20";
+                mode20.classList.remove('hidden');
+                modeCustom.classList.add('hidden');
+            } else {
+                dirBtnText.textContent = "Depuis Note Autre Barème";
+                mode20.classList.add('hidden');
+                modeCustom.classList.remove('hidden');
+            }
+            calculateConversion();
+        }
+
+        function setQuickScale(maxVal) {
+            currentCustomScale = maxVal;
+            document.getElementById('conv-input-custom-max').value = maxVal;
+            calculateConversion();
+        }
+
+        function calculateConversion() {
+            let noteOn20 = 0;
+
+            if (converterFrom20) {
+                noteOn20 = parseFloat(document.getElementById('conv-input-20').value) || 0;
+            } else {
+                const val = parseFloat(document.getElementById('conv-input-custom-val').value) || 0;
+                const max = parseFloat(document.getElementById('conv-input-custom-max').value) || 20;
+                currentCustomScale = max;
+                noteOn20 = (val / max) * 20;
+            }
+
+            // Normalisation de sécurité [0, 20]
+            noteOn20 = Math.max(0, Math.min(20, noteOn20));
+
+            const percentage = (noteOn20 / 20) * 100;
+            const noteCustom = (noteOn20 / 20) * currentCustomScale;
+
+            // Rendu des résultats
+            document.getElementById('res-note-20').textContent = noteOn20.toFixed(2);
+            document.getElementById('res-note-custom').textContent = noteCustom.toFixed(1) + " / " + currentCustomScale;
+            document.getElementById('conv-percent-text').textContent = percentage.toFixed(1) + "%";
+            document.getElementById('conv-percent-bar').style.width = percentage + "%";
+
+            // Grade Américain (US Letter)
+            let usGrade = "F";
+            let gpa = "0.00";
+            if (percentage >= 93) { usGrade = "A+"; gpa = "4.00"; }
+            else if (percentage >= 85) { usGrade = "A"; gpa = "3.70"; }
+            else if (percentage >= 75) { usGrade = "B"; gpa = "3.00"; }
+            else if (percentage >= 65) { usGrade = "C"; gpa = "2.00"; }
+            else if (percentage >= 50) { usGrade = "D"; gpa = "1.00"; }
+
+            document.getElementById('res-grade-us').textContent = usGrade;
+            document.getElementById('res-gpa').textContent = gpa;
+        }
+
+        // Calculs des Moyennes
+        function calculateSubjectAverage(subject) {
+            if (!subject.grades || subject.grades.length === 0) return null;
+            let sumPointsOn20 = 0;
+            let sumCoefs = 0;
+            subject.grades.forEach(g => {
+                const maxBar = g.maxBar || 20;
+                const normalizedVal = (g.value / maxBar) * 20;
+                sumPointsOn20 += normalizedVal * g.coef;
+                sumCoefs += g.coef;
+            });
+            return sumCoefs === 0 ? 0 : sumPointsOn20 / sumCoefs;
+        }
+
+        function calculateGlobalAverage() {
+            let totalWeightedSum = 0;
+            let totalSubjectCoefs = 0;
+            let totalGradesCount = 0;
+
+            appData.subjects.forEach(subject => {
+                const avg = calculateSubjectAverage(subject);
+                if (avg !== null) {
+                    totalWeightedSum += avg * subject.coef;
+                    totalSubjectCoefs += subject.coef;
+                }
+                totalGradesCount += subject.grades.length;
+            });
+
+            const globalAvg = totalSubjectCoefs > 0 ? totalWeightedSum / totalSubjectCoefs : null;
+            return { average: globalAvg, totalCoefs: totalSubjectCoefs, gradesCount: totalGradesCount };
+        }
+
+        // Render Principal
+        function render() {
+            const container = document.getElementById('subjects-container');
+            const emptyState = document.getElementById('empty-state');
+            
+            container.innerHTML = '';
+            emptyState.classList.toggle('hidden', appData.subjects.length > 0);
+
+            appData.subjects.forEach(subject => {
+                const avg = calculateSubjectAverage(subject);
+                const avgFormatted = avg !== null ? avg.toFixed(2) : '-';
+
+                let gradesHtml = '';
+                if (subject.grades.length === 0) {
+                    gradesHtml = `<p class="text-xs text-slate-400 italic py-2">Aucune note enregistrée dans cette matière.</p>`;
+                } else {
+                    subject.grades.forEach(grade => {
+                        const maxBar = grade.maxBar || 20;
+                        gradesHtml += `
+                            <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700/50 last:border-0 text-sm">
+                                <div>
+                                    <span class="font-medium">${escapeHtml(grade.title)}</span>
+                                    <span class="text-xs text-slate-400 ml-2">(coef. ${grade.coef})</span>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <span class="font-bold px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700">${grade.value} / ${maxBar}</span>
+                                    <button onclick="deleteGrade('${subject.id}', '${grade.id}')" class="text-slate-400 hover:text-rose-500 transition text-xs">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col justify-between";
+                card.innerHTML = `
+                    <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                        <div class="flex items-center space-x-2">
+                            <h3 class="font-bold text-base">${escapeHtml(subject.name)}</h3>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-medium">Coef. ${subject.coef}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block">Moyenne</span>
+                                <span class="text-lg font-black text-purple-700 dark:text-purple-400">${avgFormatted} / 20</span>
+                            </div>
+                            <button onclick="deleteSubject('${subject.id}')" class="p-2 text-slate-400 hover:text-rose-500 transition ml-2">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col justify-between">
+                        <div class="space-y-1 mb-4">${gradesHtml}</div>
+                        <button onclick="openAddGradeModal('${subject.id}')" class="w-full py-2.5 px-4 rounded-xl border border-dashed border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-medium text-xs transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Ajouter une note</span>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            const global = calculateGlobalAverage();
+            document.getElementById('global-average').innerHTML = global.average !== null ? `${global.average.toFixed(2)} <span class="text-xl font-normal text-slate-400">/ 20</span>` : `0.00 <span class="text-xl font-normal text-slate-400">/ 20</span>`;
+            document.getElementById('total-coefs').textContent = global.totalCoefs;
+            document.getElementById('total-subjects').textContent = appData.subjects.length;
+            document.getElementById('total-grades-count').textContent = global.gradesCount;
+
+            // Update Mention Text
+            const mentionText = document.getElementById('mention-text');
+            const mentionIcon = document.getElementById('mention-icon');
+            if (global.average === null) {
+                mentionText.textContent = "Aucune note saisie";
+                mentionIcon.className = "fa-solid fa-clock mr-1.5";
+            } else if (global.average >= 16) {
+                mentionText.textContent = "Mention Très Bien";
+                mentionIcon.className = "fa-solid fa-crown mr-1.5 text-amber-500";
+            } else if (global.average >= 14) {
+                mentionText.textContent = "Mention Bien";
+                mentionIcon.className = "fa-solid fa-award mr-1.5 text-purple-500";
+            } else if (global.average >= 12) {
+                mentionText.textContent = "Mention Assez Bien";
+                mentionIcon.className = "fa-solid fa-medal mr-1.5 text-blue-500";
+            } else if (global.average >= 10) {
+                mentionText.textContent = "Admis (Passable)";
+                mentionIcon.className = "fa-solid fa-circle-check mr-1.5 text-emerald-500";
+            } else {
+                mentionText.textContent = "Non Admis / En progrès";
+                mentionIcon.className = "fa-solid fa-triangle-exclamation mr-1.5 text-rose-500";
+            }
+        }
+
+        // Simulateur
+        function updateSimulatorSelect() {
+            const select = document.getElementById('sim-subject');
+            select.innerHTML = '';
+            appData.subjects.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function runSimulation() {
+            const subjectId = document.getElementById('sim-subject').value;
+            const gradeVal = parseFloat(document.getElementById('sim-grade').value);
+            const gradeCoef = parseFloat(document.getElementById('sim-coef').value);
+
+            if (isNaN(gradeVal) || gradeVal < 0 || gradeVal > 20) {
+                showToast("Note invalide (doit être entre 0 et 20)", "error");
+                return;
+            }
+
+            const currentGlobal = calculateGlobalAverage().average || 0;
+            let clonedSubjects = JSON.parse(JSON.stringify(appData.subjects));
+            let targetSub = clonedSubjects.find(s => s.id === subjectId);
+            
+            if (targetSub) {
+                targetSub.grades.push({ title: 'Simulation', value: gradeVal, maxBar: 20, coef: gradeCoef });
+
+                let totalWeightedSum = 0;
+                let totalSubjectCoefs = 0;
+                clonedSubjects.forEach(subject => {
+                    let sumPoints = 0;
+                    let sumCoefs = 0;
+                    subject.grades.forEach(g => {
+                        const normalizedVal = (g.value / (g.maxBar || 20)) * 20;
+                        sumPoints += normalizedVal * g.coef;
+                        sumCoefs += g.coef;
+                    });
+                    if (sumCoefs > 0) {
+                        let avg = sumPoints / sumCoefs;
+                        totalWeightedSum += avg * subject.coef;
+                        totalSubjectCoefs += subject.coef;
+                    }
+                });
+
+                const newGlobal = totalSubjectCoefs > 0 ? totalWeightedSum / totalSubjectCoefs : 0;
+                const diff = newGlobal - currentGlobal;
+
+                document.getElementById('sim-new-average').textContent = newGlobal.toFixed(2) + " / 20";
+                const diffBox = document.getElementById('sim-diff');
+                diffBox.textContent = (diff >= 0 ? "+" : "") + diff.toFixed(2) + " pt";
+                diffBox.className = `text-sm font-bold px-3 py-1.5 rounded-lg ${diff >= 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'}`;
+
+                document.getElementById('sim-result-box').classList.remove('hidden');
+                showToast("Simulation effectuée");
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "odoo_school_calc_data.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Exportation réussie");
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed && parsed.subjects) {
+                            appData = parsed;
+                            persist();
+                            showToast("Données importées avec succès");
+                        }
+                    } catch (err) {
+                        showToast("Erreur lors de l'importation", "error");
+                    }
+                };
+            }
+        }
+
+        function resetData() {
+            if (confirm("Réinitialiser toutes les données ?")) {
+                appData = { subjects: [] };
+                persist();
+                showToast("Données réinitialisées");
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = "fa-solid fa-moon";
+                localStorage.setItem('odoo_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = "fa-solid fa-sun";
+                localStorage.setItem('odoo_theme', 'dark');
+            }
+        }
+
+        window.onload = function() {
+            const savedTheme = localStorage.getItem('odoo_theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = "fa-solid fa-sun";
+            }
+            initApp();
+        };
+    </script>
+</body>
+</html>
